@@ -1,28 +1,81 @@
 openapi: 3.0.3
-info: {title: Cristiano Silva SE API, version: 1.0.0}
-servers: [{url: http://localhost:4000/api/v1}]
+info:
+  title: Cristiano Silva SE - API de Gestão
+  version: 1.0.0
+  description: API de clientes, catálogo, orçamento, ordens de serviço e agenda.
+servers:
+  - url: http://localhost:4000/api/v1
+tags: [{name: Saúde}, {name: Catálogo}, {name: Clientes}, {name: Orçamentos}, {name: Ordens de Serviço}, {name: Agenda}, {name: Técnicos}]
 paths:
   /health:
-    get: {summary: Health check, responses: {'200': {description: API disponível}}}
-  /clientes:
-    get: {summary: Lista clientes, responses: {'200': {description: Clientes}}}
-    post: {summary: Cadastra cliente e imóvel opcional, responses: {'201': {description: Criado}}}
+    get: {tags: [Saúde], summary: Health check, responses: {'200': {description: API ativa}}}
+  /categorias:
+    get: {tags: [Catálogo], summary: Lista categorias, parameters: [{in: query, name: tipo, schema: {type: string, enum: [MATERIAL, SERVICO]}}], responses: {'200': {description: Categorias}}}
+    post: {tags: [Catálogo], summary: Cria categoria, requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Categoria'}}}}, responses: {'201': {description: Criada}}}
   /materiais:
-    get: {summary: Lista materiais paginados, responses: {'200': {description: Materiais}}}
-    post: {summary: Cadastra material, responses: {'201': {description: Criado}}}
+    get: {tags: [Catálogo], summary: Busca materiais, parameters: [{in: query, name: busca, schema: {type: string}}, {in: query, name: categoria_id, schema: {type: string}}, {in: query, name: page, schema: {type: integer}}], responses: {'200': {description: Lista paginada}}}
+    post: {tags: [Catálogo], summary: Cria material, requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Material'}}}}, responses: {'201': {description: Criado}}}
+  /materiais/{id}:
+    put: {tags: [Catálogo], summary: Atualiza material, parameters: [{in: path, name: id, required: true, schema: {type: string}}], requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Material'}}}}, responses: {'200': {description: Atualizado}}}
+    delete: {tags: [Catálogo], summary: Desativa material (soft delete), parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: Desativado}}}
   /servicos:
-    get: {summary: Lista serviços e composição de kit, responses: {'200': {description: Serviços}}}
-    post: {summary: Cadastra serviço, responses: {'201': {description: Criado}}}
+    get: {tags: [Catálogo], summary: Lista serviços e kits, responses: {'200': {description: Serviços}}}
+    post: {tags: [Catálogo], summary: Cria serviço, requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Servico'}}}}, responses: {'201': {description: Criado}}}
+  /servicos/{id}:
+    get: {tags: [Catálogo], summary: Serviço com composição, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: Serviço detalhado}}}
+  /clientes:
+    get: {tags: [Clientes], summary: Busca cliente por nome/documento/telefone, parameters: [{in: query, name: busca, schema: {type: string}}, {in: query, name: page, schema: {type: integer}}], responses: {'200': {description: Clientes}}}
+    post: {tags: [Clientes], summary: Cria cliente e imóvel principal opcional, requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/ClienteCriacao'}}}}, responses: {'201': {description: Criado}}}
+  /clientes/{id}:
+    get: {tags: [Clientes], summary: Ficha 360º e histórico, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: Cliente, imóveis, OS e orçamentos}}}
+    put: {tags: [Clientes], summary: Atualiza cliente, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: Atualizado}}}
+  /clientes/{id}/imoveis:
+    post: {tags: [Clientes], summary: Adiciona imóvel, parameters: [{in: path, name: id, required: true, schema: {type: string}}], requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Imovel'}}}}, responses: {'201': {description: Imóvel criado}}}
+  /imoveis/{imovel_id}/ficha-tecnica:
+    patch: {tags: [Clientes], summary: Atualiza ficha técnica, parameters: [{in: path, name: imovel_id, required: true, schema: {type: string}}], responses: {'200': {description: Ficha atualizada}}}
+  /clientes/{id}/historico:
+    get: {tags: [Clientes], summary: Histórico de manutenção, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: Histórico}}}
   /orcamentos:
-    get: {summary: Lista orçamento com totalizadores, responses: {'200': {description: Orçamentos}}}
-    post: {summary: Emite orçamento, responses: {'201': {description: Criado}}}
+    get: {tags: [Orçamentos], summary: Lista por status com totalizadores, parameters: [{in: query, name: status, schema: {type: string}}], responses: {'200': {description: Orçamentos}}}
+    post: {tags: [Orçamentos], summary: Cria orçamento e calcula total, requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Orcamento'}}}}, responses: {'201': {description: Criado}}}
+  /orcamentos/{id}/duplicar:
+    post: {tags: [Orçamentos], summary: Duplica como rascunho, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'201': {description: Duplicado}}}
+  /orcamentos/{id}/converter-os:
+    post: {tags: [Orçamentos], summary: Aprova e converte em OS, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'201': {description: OS criada}}}
+  /orcamentos/{id}/pdf:
+    get: {tags: [Orçamentos], summary: Gera PDF com lista de compras separada, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: PDF}}}
+  /orcamentos/{id}/reenviar-link:
+    post: {tags: [Orçamentos], summary: Link de aprovação e WhatsApp, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: URLs}}}
+  /orcamentos/publico/{token}/aprovar:
+    post: {tags: [Orçamentos], summary: Aprovação pública por UUID, parameters: [{in: path, name: token, required: true, schema: {type: string, format: uuid}}], responses: {'200': {description: Aprovado}, '404': {description: Token inválido}}}
   /os:
-    get: {summary: Lista ordens de serviço, responses: {'200': {description: OS}}}
-    post: {summary: Cria ordem de serviço, responses: {'201': {description: Criada}}}
+    get: {tags: [Ordens de Serviço], summary: Lista OS por status/técnico, parameters: [{in: query, name: status, schema: {type: string}}, {in: query, name: tecnico_id, schema: {type: string}}], responses: {'200': {description: OS}}}
+    post: {tags: [Ordens de Serviço], summary: Cria OS, requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/OrdemServico'}}}}, responses: {'201': {description: Criada}}}
+  /os/{id}/itens:
+    post: {tags: [Ordens de Serviço], summary: Adiciona item, sugere kit e tempo, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: OS atualizada}}}
+  /os/{id}/status:
+    patch: {tags: [Ordens de Serviço], summary: Atualiza status, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: Status atualizado}}}
+  /os/{id}/iniciar:
+    post: {tags: [Ordens de Serviço], summary: Inicia atendimento, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: Iniciado}}}
+  /os/{id}/finalizar:
+    post: {tags: [Ordens de Serviço], summary: Finaliza com NR-10, laudo, fotos e assinatura, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: OS finalizada e PDF URL}, '422': {description: NR-10 incompleto}}}
+  /os/{id}/pdf:
+    get: {tags: [Ordens de Serviço], summary: PDF da OS, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: Documento PDF}}}
   /agenda:
-    get: {summary: Consulta agenda, responses: {'200': {description: Agendamentos}}}
-    post: {summary: Cria agendamento com validação de conflito, responses: {'201': {description: Agendado}}}
+    get: {tags: [Agenda], summary: Lista agenda por período e técnico, parameters: [{in: query, name: inicio, schema: {type: string, format: date-time}}, {in: query, name: fim, schema: {type: string, format: date-time}}, {in: query, name: tecnico_id, schema: {type: string}}], responses: {'200': {description: Agenda}}}
+    post: {tags: [Agenda], summary: Cria evento sem sobreposição, requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Agendamento'}}}}, responses: {'201': {description: Agendado}, '400': {description: Conflito}}}
+  /agenda/{id}/reagendar:
+    patch: {tags: [Agenda], summary: Reagenda e valida conflitos, parameters: [{in: path, name: id, required: true, schema: {type: string}}], responses: {'200': {description: Reagendado}, '400': {description: Conflito}}}
+  /tecnicos:
+    get: {tags: [Técnicos], summary: Lista técnicos ativos e cores de agenda, responses: {'200': {description: Técnicos}}}
 components:
   schemas:
-    Categoria: {type: object, properties: {nome: {type: string}, tipo: {type: string, enum: [SERVICO, MATERIAL]}}}
-    Material: {type: object, properties: {sku: {type: string}, nome: {type: string}, preco_venda: {type: number}, ativo: {type: boolean}}}
+    Categoria: {type: object, required: [nome, tipo], properties: {nome: {type: string}, tipo: {type: string, enum: [SERVICO, MATERIAL]}}}
+    Material: {type: object, properties: {categoria_id: {type: string}, sku: {type: string}, nome: {type: string}, unidade_medida: {type: string, enum: [UN, M, ROLO, CX, KIT]}, preco_custo: {type: number}, preco_venda: {type: number}, especificacoes: {type: object, additionalProperties: true}, ativo: {type: boolean}}}
+    Servico: {type: object, properties: {categoria_id: {type: string}, codigo: {type: string}, nome: {type: string}, descricao: {type: string}, unidade_cobranca: {type: string, enum: [PONTO, HORA, M2, UN]}, valor_mao_obra: {type: number}, tempo_estimado_min: {type: integer}, materiais_padrao: {type: array, items: {type: object, properties: {material_id: {type: string}, quantidade_padrao: {type: number}}}}}
+    Cliente: {type: object, properties: {tipo_pessoa: {type: string, enum: [PF, PJ]}, nome_razao_social: {type: string}, nome_fantasia_apelido: {type: string}, cpf_cnpj: {type: string}, telefone_whatsapp: {type: string}, email: {type: string}, observacoes_gerais: {type: string}, ativo: {type: boolean}, created_at: {type: string, format: date-time}}}
+    ClienteCriacao: {allOf: [{$ref: '#/components/schemas/Cliente'}, {type: object, properties: {imovel: {$ref: '#/components/schemas/Imovel'}}}]}
+    Imovel: {type: object, properties: {cliente_id: {type: string}, apelido_local: {type: string}, tipo_imovel: {type: string, enum: [RESIDENCIAL, COMERCIAL, CONDOMINIO, INDUSTRIAL]}, endereco: {type: object, additionalProperties: true}, ficha_tecnica: {type: object, additionalProperties: true}}}
+    Orcamento: {type: object, properties: {cliente_id: {type: string}, cliente_avulso: {type: object, properties: {nome: {type: string}, telefone: {type: string}}}, imovel_id: {type: string}, titulo_projeto: {type: string}, status: {type: string, enum: [RASCUNHO, ENVIADO, APROVADO, RECUSADO, EXPIRADO]}, validade_dias: {type: integer, default: 7}, prazo_execucao: {type: string}, modalidade_material: {type: string, enum: [FORNECIDO_EMPRESA, LISTA_COMPRAS_CLIENTE, MISTO]}, taxa_visita: {type: number}, abater_taxa_visita: {type: boolean}, desconto_valor: {type: number}, condicoes_pagamento: {type: string}, garantia_texto: {type: string}, itens: {type: array, items: {type: object, additionalProperties: true}}}}
+    OrdemServico: {type: object, properties: {cliente_id: {type: string}, imovel_id: {type: string}, tecnico_id: {type: string}, status: {type: string, enum: [ORCAMENTO, AGENDADA, EM_ANDAMENTO, AGUARDANDO_PECA, CONCLUIDA, CANCELADA]}, prioridade: {type: string, enum: [BAIXA, NORMAL, URGENCIA]}, tipo_servico: {type: string, enum: [INSTALACAO, MANUTENCAO_PREVENTIVA, MANUTENCAO_CORRETIVA, INSPECAO]}, checklist_nr10: {type: object, additionalProperties: true}, itens: {type: array, items: {type: object}}, valor_total: {type: number}}}
+    Agendamento: {type: object, required: [os_id, tecnico_id, data_inicio, data_fim], properties: {os_id: {type: string}, tecnico_id: {type: string}, data_inicio: {type: string, format: date-time}, data_fim: {type: string, format: date-time}, observacoes: {type: string}}}
