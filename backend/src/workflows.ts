@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
-import mongoose from "mongoose";\nimport path from "node:path";
+import mongoose from "mongoose";
+import path from "node:path";
 import PDFDocument from "pdfkit";
 import { v4 as uuid } from "uuid";
 
