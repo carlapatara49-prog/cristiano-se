@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import mongoose from "mongoose";
+import path from "node:path";
 import PDFDocument from "pdfkit";
 import { v4 as uuid } from "uuid";
 
@@ -7,18 +8,15 @@ const model = (name: string) => mongoose.model(name);
 const asyncRoute = (fn: (req: Request, res: Response) => Promise<unknown>) =>
   (req: Request, res: Response) => fn(req, res).catch((e: any) => res.status(400).json({ error: e.message }));
 
-function brand(doc: PDFDocument, subtitle: string) {
-  doc.rect(42, 38, 32, 32).fill("#477E7B");
-  doc.rect(49, 45, 18, 18).lineWidth(2).stroke("#F29A55");
-  doc.fillColor("#080808").fontSize(18).font("Helvetica-Bold").text("CRISTIANO", 84, 40, { continued: true });
-  doc.fillColor("#F29A55").text(" SILVA");
-  doc.fillColor("#477E7B").fontSize(9).text("S E", 84, 62);
-  doc.fillColor("#555").fontSize(10).text(subtitle, 42, 86);
-  doc.moveTo(42, 104).lineTo(553, 104).strokeColor("#F29A55").lineWidth(2).stroke();
-  doc.y = 118;
+function brand(doc: InstanceType<typeof PDFDocument>, subtitle: string) {
+  try { doc.image(path.resolve("public/logo-cristiano-se.png"), 42, 24, { width: 185 }); }
+  catch { doc.fillColor("#080808").fontSize(18).font("Helvetica-Bold").text("CRISTIANO", 42, 42, { continued: true }); doc.fillColor("#F29A55").text(" SILVA SE"); }
+  doc.fillColor("#555").fontSize(10).font("Helvetica").text(subtitle, 42, 108);
+  doc.moveTo(42, 124).lineTo(553, 124).strokeColor("#F29A55").lineWidth(2).stroke();
+  doc.y = 138;
 }
 function money(n: number) { return Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
-function createPdf(res: Response, title: string, render: (doc: PDFDocument) => void) {
+function createPdf(res: Response, title: string, render: (doc: InstanceType<typeof PDFDocument>) => void) {
   const doc = new PDFDocument({ size: "A4", margin: 42, info: { Title: title, Author: "Cristiano Silva SE" } });
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));
@@ -67,10 +65,11 @@ export function registerWorkflowRoutes(app: Express, base: string) {
     if (!q) return res.status(404).json({ error: "Orçamento não encontrado" });
     if (!q.cliente_id || !q.imovel_id) return res.status(422).json({ error: "Associe cliente e imóvel antes de converter em OS" });
     q.status = "APROVADO"; await q.save();
+    let suggestedMinutes = 0; for (const item of q.itens || []) { if (item.tipo === "SERVICO" && item.referencia_id) { const svc: any = await Service.findById(item.referencia_id); suggestedMinutes += Number(svc?.tempo_estimado_min || 0) * Number(item.quantidade || 1); } }
     const os = await WorkOrder.create({
       numero_os: "OS-" + new Date().getFullYear() + "-" + uuid().slice(0, 8).toUpperCase(),
       orcamento_id: q._id, cliente_id: q.cliente_id, imovel_id: q.imovel_id, status: "ORCAMENTO",
-      prioridade: "NORMAL", tipo_servico: "INSTALACAO", itens: (q.itens || []).map((i: any) => ({
+      prioridade: "NORMAL", tipo_servico: "INSTALACAO", _suggested_minutes: suggestedMinutes, itens: (q.itens || []).map((i: any) => ({
         tipo: i.tipo, referencia_id: i.referencia_id, descricao: i.descricao, quantidade: i.quantidade,
         valor_unitario: i.valor_unitario, fornecido_pelo_cliente: i.cobrar_do_cliente === false
       })), valor_total: q.valor_total, created_at: new Date()
@@ -105,19 +104,17 @@ export function registerWorkflowRoutes(app: Express, base: string) {
   app.post(base + "/os/:id/iniciar", asyncRoute(async (req, res) => {
     const os: any = await WorkOrder.findById(req.params.id);
     if (!os) return res.status(404).json({ error: "OS não encontrada" });
-    os.status = "EM_ANDAMENTO"; os.iniciada_at = new Date(); await os.save(); res.json(os);
-  }));
-  app.post(base + "/os/:id/finalizacao-pdf", asyncRoute(async (req, res) => {
-    const os: any = await WorkOrder.findByIdAndUpdate(req.params.id, { ...req.body, status: "CONCLUIDA", concluida_at: new Date() }, { new: true });
-    if (!os) return res.status(404).json({ error: "OS não encontrada" });
-    res.json({ ordem_servico: os, pdf: base + "/os/" + os._id + "/pdf" });
+    const safety = req.body.checklist_nr10 || os.checklist_nr10 || {};
+    const required = ["circuito_desenergizado","bloqueio_etiquetagem","ausencia_tensao_testada","epis_verificados"];
+    if (required.some(k => safety[k] !== true)) return res.status(422).json({ error: "Checklist NR-10 deve estar completo antes de iniciar" });
+    os.checklist_nr10 = safety; os.status = "EM_ANDAMENTO"; os.iniciada_at = new Date(); await os.save(); res.json(os);
   }));
   app.get(base + "/clientes/:id/historico", asyncRoute(async (req, res) => {
     const [client, properties, orders, quotes] = await Promise.all([Client.findById(req.params.id), Property.find({ cliente_id: req.params.id }), WorkOrder.find({ cliente_id: req.params.id }).sort({ created_at: -1 }), Quote.find({ cliente_id: req.params.id }).sort({ created_at: -1 })]);
     res.json({ client, properties, orders, quotes });
   }));
   app.post(base + "/orcamentos/:id/reenviar-link", asyncRoute(async (req, res) => {
-    const q: any = await Quote.findById(req.params.id); if (!q) return res.status(404).json({ error: "Orçamento não encontrado" });
+    const q: any = await Quote.findById(req.params.id).populate("cliente_id"); if (!q) return res.status(404).json({ error: "Orçamento não encontrado" });
     if (!q.token_aprovacao_publica) { q.token_aprovacao_publica = uuid(); await q.save(); }
     const link = (process.env.PUBLIC_APP_URL || "http://localhost:5173") + "/aprovar/" + q.token_aprovacao_publica;
     const phone = (q.cliente_id?.telefone_whatsapp || q.cliente_avulso?.telefone || "").replace(/\D/g, "");
