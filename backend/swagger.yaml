@@ -72,7 +72,23 @@ components:
   schemas:
     Categoria: {type: object, required: [nome, tipo], properties: {nome: {type: string}, tipo: {type: string, enum: [SERVICO, MATERIAL]}}}
     Material: {type: object, properties: {categoria_id: {type: string}, sku: {type: string}, nome: {type: string}, unidade_medida: {type: string, enum: [UN, M, ROLO, CX, KIT]}, preco_custo: {type: number}, preco_venda: {type: number}, especificacoes: {type: object, additionalProperties: true}, ativo: {type: boolean}}}
-    Servico: {type: object, properties: {categoria_id: {type: string}, codigo: {type: string}, nome: {type: string}, descricao: {type: string}, unidade_cobranca: {type: string, enum: [PONTO, HORA, M2, UN]}, valor_mao_obra: {type: number}, tempo_estimado_min: {type: integer}, materiais_padrao: {type: array, items: {type: object, properties: {material_id: {type: string}, quantidade_padrao: {type: number}}}}}
+    Servico:
+      type: object
+      properties:
+        categoria_id: {type: string}
+        codigo: {type: string}
+        nome: {type: string}
+        descricao: {type: string}
+        unidade_cobranca: {type: string, enum: [PONTO, HORA, M2, UN]}
+        valor_mao_obra: {type: number}
+        tempo_estimado_min: {type: integer}
+        materiais_padrao:
+          type: array
+          items:
+            type: object
+            properties:
+              material_id: {type: string}
+              quantidade_padrao: {type: number}
     Cliente: {type: object, properties: {tipo_pessoa: {type: string, enum: [PF, PJ]}, nome_razao_social: {type: string}, nome_fantasia_apelido: {type: string}, cpf_cnpj: {type: string}, telefone_whatsapp: {type: string}, email: {type: string}, observacoes_gerais: {type: string}, ativo: {type: boolean}, created_at: {type: string, format: date-time}}}
     ClienteCriacao: {allOf: [{$ref: '#/components/schemas/Cliente'}, {type: object, properties: {imovel: {$ref: '#/components/schemas/Imovel'}}}]}
     Imovel: {type: object, properties: {cliente_id: {type: string}, apelido_local: {type: string}, tipo_imovel: {type: string, enum: [RESIDENCIAL, COMERCIAL, CONDOMINIO, INDUSTRIAL]}, endereco: {type: object, additionalProperties: true}, ficha_tecnica: {type: object, additionalProperties: true}}}
