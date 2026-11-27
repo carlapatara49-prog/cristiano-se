@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import mongoose from "mongoose";
+import mongoose from "mongoose";\nimport path from "node:path";
 import PDFDocument from "pdfkit";
 import { v4 as uuid } from "uuid";
 
@@ -8,14 +8,11 @@ const asyncRoute = (fn: (req: Request, res: Response) => Promise<unknown>) =>
   (req: Request, res: Response) => fn(req, res).catch((e: any) => res.status(400).json({ error: e.message }));
 
 function brand(doc: PDFDocument, subtitle: string) {
-  doc.rect(42, 38, 32, 32).fill("#477E7B");
-  doc.rect(49, 45, 18, 18).lineWidth(2).stroke("#F29A55");
-  doc.fillColor("#080808").fontSize(18).font("Helvetica-Bold").text("CRISTIANO", 84, 40, { continued: true });
-  doc.fillColor("#F29A55").text(" SILVA");
-  doc.fillColor("#477E7B").fontSize(9).text("S E", 84, 62);
-  doc.fillColor("#555").fontSize(10).text(subtitle, 42, 86);
-  doc.moveTo(42, 104).lineTo(553, 104).strokeColor("#F29A55").lineWidth(2).stroke();
-  doc.y = 118;
+  try { doc.image(path.resolve("public/logo-cristiano-se.png"), 42, 24, { width: 185 }); }
+  catch { doc.fillColor("#080808").fontSize(18).font("Helvetica-Bold").text("CRISTIANO", 42, 42, { continued: true }); doc.fillColor("#F29A55").text(" SILVA SE"); }
+  doc.fillColor("#555").fontSize(10).font("Helvetica").text(subtitle, 42, 108);
+  doc.moveTo(42, 124).lineTo(553, 124).strokeColor("#F29A55").lineWidth(2).stroke();
+  doc.y = 138;
 }
 function money(n: number) { return Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
 function createPdf(res: Response, title: string, render: (doc: PDFDocument) => void) {
