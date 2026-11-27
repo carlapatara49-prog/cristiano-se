@@ -14,4 +14,5 @@ jobs:
           node-version: 20
 
       - run: npm install
+      - run: node -e "require('yaml').parse(require('fs').readFileSync('backend/swagger.yaml','utf8'))"
       - run: npm run build
