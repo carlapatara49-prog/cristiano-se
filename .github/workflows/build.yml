@@ -1,7 +1,7 @@
 name: Build application
 on:
   push:
-    branches: [main, feat/complete-business-workflows]
+    branches: [main]
   pull_request:
     branches: [main]
 jobs:
