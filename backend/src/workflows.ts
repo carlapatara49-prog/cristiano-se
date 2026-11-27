@@ -103,7 +103,10 @@ export function registerWorkflowRoutes(app: Express, base: string) {
   app.post(base + "/os/:id/iniciar", asyncRoute(async (req, res) => {
     const os: any = await WorkOrder.findById(req.params.id);
     if (!os) return res.status(404).json({ error: "OS não encontrada" });
-    os.status = "EM_ANDAMENTO"; os.iniciada_at = new Date(); await os.save(); res.json(os);
+    const safety = req.body.checklist_nr10 || os.checklist_nr10 || {};
+    const required = ["circuito_desenergizado","bloqueio_etiquetagem","ausencia_tensao_testada","epis_verificados"];
+    if (required.some(k => safety[k] !== true)) return res.status(422).json({ error: "Checklist NR-10 deve estar completo antes de iniciar" });
+    os.checklist_nr10 = safety; os.status = "EM_ANDAMENTO"; os.iniciada_at = new Date(); await os.save(); res.json(os);
   }));
   app.post(base + "/os/:id/finalizacao-pdf", asyncRoute(async (req, res) => {
     const os: any = await WorkOrder.findByIdAndUpdate(req.params.id, { ...req.body, status: "CONCLUIDA", concluida_at: new Date() }, { new: true });
