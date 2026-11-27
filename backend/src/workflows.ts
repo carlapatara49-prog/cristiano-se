@@ -109,11 +109,6 @@ export function registerWorkflowRoutes(app: Express, base: string) {
     if (required.some(k => safety[k] !== true)) return res.status(422).json({ error: "Checklist NR-10 deve estar completo antes de iniciar" });
     os.checklist_nr10 = safety; os.status = "EM_ANDAMENTO"; os.iniciada_at = new Date(); await os.save(); res.json(os);
   }));
-  app.post(base + "/os/:id/finalizacao-pdf", asyncRoute(async (req, res) => {
-    const os: any = await WorkOrder.findByIdAndUpdate(req.params.id, { ...req.body, status: "CONCLUIDA", concluida_at: new Date() }, { new: true });
-    if (!os) return res.status(404).json({ error: "OS não encontrada" });
-    res.json({ ordem_servico: os, pdf: base + "/os/" + os._id + "/pdf" });
-  }));
   app.get(base + "/clientes/:id/historico", asyncRoute(async (req, res) => {
     const [client, properties, orders, quotes] = await Promise.all([Client.findById(req.params.id), Property.find({ cliente_id: req.params.id }), WorkOrder.find({ cliente_id: req.params.id }).sort({ created_at: -1 }), Quote.find({ cliente_id: req.params.id }).sort({ created_at: -1 })]);
     res.json({ client, properties, orders, quotes });
