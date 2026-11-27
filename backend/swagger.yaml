@@ -1,0 +1,28 @@
+openapi: 3.0.3
+info: {title: Cristiano Silva SE API, version: 1.0.0}
+servers: [{url: http://localhost:4000/api/v1}]
+paths:
+  /health:
+    get: {summary: Health check, responses: {'200': {description: API disponível}}}
+  /clientes:
+    get: {summary: Lista clientes, responses: {'200': {description: Clientes}}}
+    post: {summary: Cadastra cliente e imóvel opcional, responses: {'201': {description: Criado}}}
+  /materiais:
+    get: {summary: Lista materiais paginados, responses: {'200': {description: Materiais}}}
+    post: {summary: Cadastra material, responses: {'201': {description: Criado}}}
+  /servicos:
+    get: {summary: Lista serviços e composição de kit, responses: {'200': {description: Serviços}}}
+    post: {summary: Cadastra serviço, responses: {'201': {description: Criado}}}
+  /orcamentos:
+    get: {summary: Lista orçamento com totalizadores, responses: {'200': {description: Orçamentos}}}
+    post: {summary: Emite orçamento, responses: {'201': {description: Criado}}}
+  /os:
+    get: {summary: Lista ordens de serviço, responses: {'200': {description: OS}}}
+    post: {summary: Cria ordem de serviço, responses: {'201': {description: Criada}}}
+  /agenda:
+    get: {summary: Consulta agenda, responses: {'200': {description: Agendamentos}}}
+    post: {summary: Cria agendamento com validação de conflito, responses: {'201': {description: Agendado}}}
+components:
+  schemas:
+    Categoria: {type: object, properties: {nome: {type: string}, tipo: {type: string, enum: [SERVICO, MATERIAL]}}}
+    Material: {type: object, properties: {sku: {type: string}, nome: {type: string}, preco_venda: {type: number}, ativo: {type: boolean}}}
