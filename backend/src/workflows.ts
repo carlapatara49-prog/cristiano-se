@@ -124,3 +124,26 @@ export function registerWorkflowRoutes(app: Express, base: string) {
     res.json({ link, whatsapp_url: "https://wa.me/" + phone + "?text=" + encodeURIComponent("Olá! Segue o orçamento " + q.codigo + " para aprovação: " + link) });
   }));
 }
+export async function seedWorkflowExamples() {
+  const Client = model("Cliente"), Property = model("ClienteImovel"), Quote = model("Orcamento"), WorkOrder = model("OrdemServico"), Appointment = model("Agendamento"), Technician = model("Tecnico");
+  if (await Client.countDocuments()) return;
+  const clients = await Client.create([
+    { tipo_pessoa:"PF", nome_razao_social:"Mariana Oliveira", cpf_cnpj:"12345678901", telefone_whatsapp:"11999990001", email:"mariana@example.com", ativo:true },
+    { tipo_pessoa:"PJ", nome_razao_social:"Comercial Alfa Ltda", nome_fantasia_apelido:"Comercial Alfa", cpf_cnpj:"12345678000199", telefone_whatsapp:"1133334000", email:"contato@alfa.example", ativo:true }
+  ]);
+  const properties = await Property.create([
+    { cliente_id:clients[0]._id, apelido_local:"Residência Principal", tipo_imovel:"RESIDENCIAL", endereco:{cep:"01001000",logradouro:"Praça da Sé",numero:"100",bairro:"Sé",cidade:"São Paulo",uf:"SP"}, ficha_tecnica:{padrao_entrada:"BIFASICO",tensao_rede:"127V_220V",disjuntor_geral:{amperagem:63,curva:"C"},sistema_aterramento:{possui_aterramento:true,esquema:"TN-S",possui_idr:true,possui_dps:true},localizacao_qdc:"Lavanderia"} },
+    { cliente_id:clients[1]._id, apelido_local:"Unidade Comercial", tipo_imovel:"COMERCIAL", endereco:{cep:"01310000",logradouro:"Avenida Paulista",numero:"500",bairro:"Bela Vista",cidade:"São Paulo",uf:"SP"}, ficha_tecnica:{padrao_entrada:"TRIFASICO",tensao_rede:"380V",disjuntor_geral:{amperagem:100,curva:"C"},sistema_aterramento:{possui_aterramento:true,esquema:"TT",possui_idr:true,possui_dps:true},localizacao_qdc:"Sala técnica"} }
+  ]);
+  await Quote.create({codigo:"ORC-"+new Date().getFullYear()+"-001",cliente_id:clients[0]._id,imovel_id:properties[0]._id,titulo_projeto:"Adequação elétrica residencial",status:"ENVIADO",validade_dias:7,prazo_execucao:"2 dias",modalidade_material:"MISTO",subtotal_servicos:95,subtotal_materiais:30,taxa_visita:50,abater_taxa_visita:true,desconto_valor:0,valor_total:125,condicoes_pagamento:"50% início / 50% conclusão",garantia_texto:"90 dias sobre os serviços",token_aprovacao_publica:uuid(),created_at:new Date(),itens:[{ambiente:"Cozinha",tipo:"SERVICO",descricao:"Instalação de tomada 20A",unidade:"PONTO",quantidade:1,valor_unitario:95,subtotal:95,cobrar_do_cliente:true},{ambiente:"Cozinha",tipo:"MATERIAL",descricao:"Cabo 2,5mm²",unidade:"M",quantidade:3,valor_unitario:10,subtotal:30,cobrar_do_cliente:true}]});
+  const orders = await WorkOrder.create([
+    {numero_os:"OS-"+new Date().getFullYear()+"-0041",cliente_id:clients[0]._id,imovel_id:properties[0]._id,status:"AGENDADA",prioridade:"NORMAL",tipo_servico:"MANUTENCAO_PREVENTIVA",descricao_problema:"Inspeção preventiva do quadro",itens:[],valor_total:280,created_at:new Date()},
+    {numero_os:"OS-"+new Date().getFullYear()+"-0042",cliente_id:clients[1]._id,imovel_id:properties[1]._id,status:"AGENDADA",prioridade:"NORMAL",tipo_servico:"INSPECAO",descricao_problema:"Inspeção de circuitos comerciais",itens:[],valor_total:350,created_at:new Date()}
+  ]);
+  const techs = await Technician.find({especialidade:{$ne:"Gestão"}});
+  const start = new Date(); start.setDate(start.getDate()+1); start.setHours(9,0,0,0);
+  const end = new Date(start); end.setHours(11);
+  const start2 = new Date(start); start2.setHours(13);
+  const end2 = new Date(start2); end2.setHours(15);
+  await Appointment.create([{os_id:orders[0]._id,tecnico_id:techs[0]._id,data_inicio:start,data_fim:end,observacoes:"Confirmar acesso ao QDC"},{os_id:orders[1]._id,tecnico_id:techs[1]._id,data_inicio:start2,data_fim:end2,observacoes:"Atendimento comercial"}]);
+}
