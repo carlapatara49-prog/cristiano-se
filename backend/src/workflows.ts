@@ -114,7 +114,7 @@ export function registerWorkflowRoutes(app: Express, base: string) {
     res.json({ client, properties, orders, quotes });
   }));
   app.post(base + "/orcamentos/:id/reenviar-link", asyncRoute(async (req, res) => {
-    const q: any = await Quote.findById(req.params.id); if (!q) return res.status(404).json({ error: "Orçamento não encontrado" });
+    const q: any = await Quote.findById(req.params.id).populate("cliente_id"); if (!q) return res.status(404).json({ error: "Orçamento não encontrado" });
     if (!q.token_aprovacao_publica) { q.token_aprovacao_publica = uuid(); await q.save(); }
     const link = (process.env.PUBLIC_APP_URL || "http://localhost:5173") + "/aprovar/" + q.token_aprovacao_publica;
     const phone = (q.cliente_id?.telefone_whatsapp || q.cliente_avulso?.telefone || "").replace(/\D/g, "");
