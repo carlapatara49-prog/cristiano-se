@@ -8,7 +8,7 @@ const model = (name: string) => mongoose.model(name);
 const asyncRoute = (fn: (req: Request, res: Response) => Promise<unknown>) =>
   (req: Request, res: Response) => fn(req, res).catch((e: any) => res.status(400).json({ error: e.message }));
 
-function brand(doc: PDFDocument, subtitle: string) {
+function brand(doc: InstanceType<typeof PDFDocument>, subtitle: string) {
   try { doc.image(path.resolve("public/logo-cristiano-se.png"), 42, 24, { width: 185 }); }
   catch { doc.fillColor("#080808").fontSize(18).font("Helvetica-Bold").text("CRISTIANO", 42, 42, { continued: true }); doc.fillColor("#F29A55").text(" SILVA SE"); }
   doc.fillColor("#555").fontSize(10).font("Helvetica").text(subtitle, 42, 108);
@@ -16,7 +16,7 @@ function brand(doc: PDFDocument, subtitle: string) {
   doc.y = 138;
 }
 function money(n: number) { return Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
-function createPdf(res: Response, title: string, render: (doc: PDFDocument) => void) {
+function createPdf(res: Response, title: string, render: (doc: InstanceType<typeof PDFDocument>) => void) {
   const doc = new PDFDocument({ size: "A4", margin: 42, info: { Title: title, Author: "Cristiano Silva SE" } });
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));
