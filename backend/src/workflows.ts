@@ -64,10 +64,11 @@ export function registerWorkflowRoutes(app: Express, base: string) {
     if (!q) return res.status(404).json({ error: "Orçamento não encontrado" });
     if (!q.cliente_id || !q.imovel_id) return res.status(422).json({ error: "Associe cliente e imóvel antes de converter em OS" });
     q.status = "APROVADO"; await q.save();
+    let suggestedMinutes = 0; for (const item of q.itens || []) { if (item.tipo === "SERVICO" && item.referencia_id) { const svc: any = await Service.findById(item.referencia_id); suggestedMinutes += Number(svc?.tempo_estimado_min || 0) * Number(item.quantidade || 1); } }
     const os = await WorkOrder.create({
       numero_os: "OS-" + new Date().getFullYear() + "-" + uuid().slice(0, 8).toUpperCase(),
       orcamento_id: q._id, cliente_id: q.cliente_id, imovel_id: q.imovel_id, status: "ORCAMENTO",
-      prioridade: "NORMAL", tipo_servico: "INSTALACAO", itens: (q.itens || []).map((i: any) => ({
+      prioridade: "NORMAL", tipo_servico: "INSTALACAO", _suggested_minutes: suggestedMinutes, itens: (q.itens || []).map((i: any) => ({
         tipo: i.tipo, referencia_id: i.referencia_id, descricao: i.descricao, quantidade: i.quantidade,
         valor_unitario: i.valor_unitario, fornecido_pelo_cliente: i.cobrar_do_cliente === false
       })), valor_total: q.valor_total, created_at: new Date()
